@@ -601,27 +601,6 @@ local on_attach = function(client, bufnr)
     vim.lsp.buf.format()
   end, { desc = 'Format current buffer with LSP' })
 
-  if client:supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight, bufnr) then
-    local group = vim.api.nvim_create_augroup('lsp-highlight', { clear = false })
-    vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
-      buffer = bufnr,
-      group = group,
-      callback = vim.lsp.buf.document_highlight,
-    })
-    vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
-      buffer = bufnr,
-      group = group,
-      callback = vim.lsp.buf.clear_references,
-    })
-    vim.api.nvim_create_autocmd('LspDetach', {
-      buffer = bufnr,
-      group = group,
-      callback = function()
-        vim.api.nvim_clear_autocmds { group = 'lsp-highlight', buffer = bufnr }
-      end,
-    })
-  end
-
   if client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint, bufnr) then
     nmap('<leader>th', function()
       vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = bufnr }, { bufnr = bufnr })
