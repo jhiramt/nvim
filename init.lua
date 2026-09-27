@@ -1,43 +1,3 @@
---[[
-
-=====================================================================
-==================== READ THIS BEFORE CONTINUING ====================
-=====================================================================
-
-Kickstart.nvim is *not* a distribution.
-
-Kickstart.nvim is a template for your own configuration.
-  The goal is that you can read every line of code, top-to-bottom, understand
-  what your configuration is doing, and modify it to suit your needs.
-
-  Once you've done that, you should start exploring, configuring and tinkering to
-  explore Neovim!
-
-  If you don't know anything about Lua, I recommend taking some time to read through
-  a guide. One possible example:
-  - https://learnxinyminutes.com/docs/lua/
-
-
-  And then you can explore or search through `:help lua-guide`
-  - https://neovim.io/doc/user/lua-guide.html
-
-
-Kickstart Guide:
-
-I have left several `:help X` comments throughout the init.lua
-You should run that command and read that help section for more information.
-
-In addition, I have some `NOTE:` items throughout the file.
-These are for you, the reader to help understand what is happening. Feel free to delete
-them once you know what you're doing, but they should serve as a guide for when you
-are first encountering a few different constructs in your nvim config.
-
-I hope you enjoy your Neovim journey,
-- TJ
-
-P.S. You can delete this when you're done too. It's your config now :)
---]]
-
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are required (otherwise wrong leader will be used)
@@ -49,7 +9,7 @@ vim.diagnostic.config({
   virtual_lines = true,
 })
 
--- Shortcut for opening NetRw
+-- Open netrw's explorer (netrw is bundled with Neovim 0.10+)
 vim.keymap.set("n", "<leader>pv", vim.cmd.Ex)
 
 vim.keymap.set("n", "<leader>gn", ":Gen<CR>")
@@ -58,13 +18,12 @@ vim.keymap.set("n", "<leader>gn", ":Gen<CR>")
 --    https://github.com/folke/lazy.nvim
 --    `:help lazy.nvim.txt` for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
-if not vim.loop.fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system {
     'git',
     'clone',
     '--filter=blob:none',
     'https://github.com/folke/lazy.nvim.git',
-    '--branch=stable', -- latest stable release
     lazypath,
   }
 end
@@ -141,9 +100,6 @@ require('lazy').setup({
         require('which-key').setup()
         -- Document existing key chains
         require('which-key').add {
-          { '<leader>c', group = '[C]ode' },
-          { '<leader>d', group = '[D]ocument' },
-          { '<leader>r', group = '[R]ename' },
           { '<leader>s', group = '[S]earch' },
           { '<leader>w', group = '[W]orkspace' },
           { '<leader>t', group = '[T]oggle' },
@@ -227,11 +183,6 @@ require('lazy').setup({
     },
   },
 
-  --themes
-{ "nordtheme/vim", name = "nord", priority = 1000 },
-{"folke/tokyonight.nvim", name = "tokyonight", priority =1000},
-
-
   {
     -- Set lualine as statusline
     'nvim-lualine/lualine.nvim',
@@ -249,9 +200,10 @@ require('lazy').setup({
   {
     -- Add indentation guides even on blank lines
     'lukas-reineke/indent-blankline.nvim',
-    -- Enable `lukas-reineke/indent-blankline.nvim`
-    -- See `:help ibl`
+    -- NOTE: `main = 'ibl'` is required on ibl v3. Without it lazy.nvim resolves the
+    -- deprecated v2 entrypoint, whose setup() only raises a migration error.
     main = 'ibl',
+    -- See `:help ibl`
     opts = {},
   },
 
@@ -281,20 +233,22 @@ require('lazy').setup({
 
   {
     -- Highlight, edit, and navigate code
+    -- The `master` branch is archived (final commit: "announce archiving of
+    -- master branch", v0.10.0) and is incompatible with Neovim 0.12's
+    -- treesitter API -- its `set-lang-from-info-string!` injection directive
+    -- throws "attempt to call method 'range' (a nil value)" whenever an LSP
+    -- hover float is rendered. `main` is the maintained rewrite.
     'nvim-treesitter/nvim-treesitter',
+    branch = 'main',
+    lazy = false, -- upstream: "This plugin does not support lazy-loading."
     dependencies = {
-      'nvim-treesitter/nvim-treesitter-textobjects',
-     },
-     build = ':TSUpdate',
-   },
+      { 'nvim-treesitter/nvim-treesitter-textobjects', branch = 'main' },
+    },
+    build = ':TSUpdate',
+  },
 
 -- vimtex
-{
-  "lervag/vimtex",
-  init = function()
-    -- Use init for configuration, don't use the more common "config".
-  end
-},
+'lervag/vimtex',
 
   -- Custom Parameters (with defaults)
 
@@ -327,19 +281,7 @@ require('lazy').setup({
         debug = false -- Prints errors and the command which is run.
     }
 },
-  -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
-  --       These are some example plugins that I've included in the kickstart repository.
-  --       Uncomment any of the lines below to enable them.
-  -- require 'kickstart.plugins.autoformat',
-  -- require 'kickstart.plugins.debug',
 
-  -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
-  --    You can use this folder to prevent any conflicts with this init.lua if you're interested in keeping
-  --    up-to-date with whatever is in the kickstart repo.
-  --    Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  --
-  --    For additional information see: https://github.com/folke/lazy.nvim#-structuring-your-plugins
-  -- { import = 'custom.plugins' },
 }, {})
 
 -- [[ Setting options ]]
@@ -408,8 +350,13 @@ vim.keymap.set('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = tr
 vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
 
 -- Diagnostic keymaps
-vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous diagnostic message' })
-vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next diagnostic message' })
+-- NOTE: `goto_prev`/`goto_next` are deprecated and go away in 0.13; use `jump`.
+vim.keymap.set('n', '[d', function()
+  vim.diagnostic.jump { count = -1 }
+end, { desc = 'Go to previous diagnostic message' })
+vim.keymap.set('n', ']d', function()
+  vim.diagnostic.jump { count = 1 }
+end, { desc = 'Go to next diagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Open floating diagnostic message' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostics list' })
 
@@ -506,113 +453,143 @@ vim.keymap.set('n', '<leader>sr', require('telescope.builtin').resume, { desc = 
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
--- Defer Treesitter setup after first render to improve startup time of 'nvim {filename}'
-vim.defer_fn(function()
-  require('nvim-treesitter.configs').setup {
-    -- Add languages to be installed here that you want installed for treesitter
-    ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'javascript', 'typescript', 'vimdoc', 'vim', 'bash' },
+-- NOTE: this is NOT deferred. `install_dir` is prepended to 'runtimepath' by
+-- setup(), and a FileType autocmd registered on the next event-loop tick would
+-- miss the first buffer when running `nvim {filename}` -- leaving that file
+-- with no highlighting at all.
+require('nvim-treesitter').setup {
+  -- Parsers and queries live here now, not in the plugin directory.
+  -- The 18 languages below are installed with :TSInstall (upstream removed
+  -- `ensure_installed`; there is no auto-install on this branch).
+  install_dir = vim.fn.stdpath('data') .. '/site',
+}
 
-    -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
-    auto_install = false,
-    -- Install languages synchronously (only applied to `ensure_installed`)
-    sync_install = false,
-    -- List of parsers to ignore installing
-    ignore_install = {},
-    -- You can specify additional Treesitter modules here: -- For example: -- playground = {--enable = true,-- },
-    modules = {},
-    highlight = { enable = true },
-    indent = { enable = true },
-    incremental_selection = {
-      enable = true,
-      keymaps = {
-        init_selection = '<c-space>',
-        node_incremental = '<c-space>',
-        scope_incremental = '<c-s>',
-        node_decremental = '<M-space>',
-      },
-    },
-    textobjects = {
-      select = {
-        enable = true,
-        lookahead = true, -- Automatically jump forward to textobj, similar to targets.vim
-        keymaps = {
-          -- You can use the capture groups defined in textobjects.scm
-          ['aa'] = '@parameter.outer',
-          ['ia'] = '@parameter.inner',
-          ['af'] = '@function.outer',
-          ['if'] = '@function.inner',
-          ['ac'] = '@class.outer',
-          ['ic'] = '@class.inner',
-        },
-      },
-      move = {
-        enable = true,
-        set_jumps = true, -- whether to set jumps in the jumplist
-        goto_next_start = {
-          [']m'] = '@function.outer',
-          [']]'] = '@class.outer',
-        },
-        goto_next_end = {
-          [']M'] = '@function.outer',
-          [']['] = '@class.outer',
-        },
-        goto_previous_start = {
-          ['[m'] = '@function.outer',
-          ['[['] = '@class.outer',
-        },
-        goto_previous_end = {
-          ['[M'] = '@function.outer',
-          ['[]'] = '@class.outer',
-        },
-      },
-      swap = {
-        enable = true,
-        swap_next = {
-          ['<leader>a'] = '@parameter.inner',
-        },
-        swap_previous = {
-          ['<leader>A'] = '@parameter.inner',
-        },
-      },
-    },
-  }
-end, 0)
+-- Highlighting is provided by Neovim, not by nvim-treesitter, and is opt-in:
+-- Neovim 0.12 does not start a highlighter on its own. Without this, every
+-- token falls back to Normal and code renders in a single flat colour.
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = {
+    'bash', 'c', 'cpp', 'diff', 'go', 'html', 'javascript', 'lua', 'luadoc',
+    'markdown', 'python', 'query', 'rust', 'tsx', 'typescript', 'vim', 'vimdoc',
+  },
+  callback = function()
+    vim.treesitter.start()
+  end,
+})
+
+-- Treesitter indentation is experimental upstream, so it is enabled only where
+-- the builtin is weak. c/cpp/lua deliberately keep cindent and their own
+-- indent rules.
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'bash', 'html', 'markdown', 'python' },
+  callback = function(args)
+    vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+  end,
+})
+
+-- Textobjects moved to their own plugin, and setup() now takes options only --
+-- every keymap has to be declared explicitly. They are registered per buffer so
+-- they stay scoped to these filetypes, matching the old `enable = true`.
+require('nvim-treesitter-textobjects').setup {
+  select = { lookahead = true }, -- automatically jump forward to textobj, like targets.vim
+  move = { set_jumps = true },   -- whether to set jumps in the jumplist
+}
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = {
+    'bash', 'c', 'cpp', 'diff', 'go', 'html', 'javascript', 'lua', 'luadoc',
+    'markdown', 'python', 'query', 'rust', 'tsx', 'typescript', 'vim', 'vimdoc',
+  },
+  callback = function(args)
+    local buf = args.buf
+
+    local function selmap(lhs, q, desc)
+      for _, mode in ipairs { 'x', 'o' } do
+        vim.keymap.set(mode, lhs, function()
+          require('nvim-treesitter-textobjects.select')
+            .select_textobject(q, 'textobjects', mode == 'x' and 'v' or 'o')
+        end, { buffer = buf, desc = desc, silent = true })
+      end
+    end
+
+    local function mvmap(lhs, mod, q, desc)
+      vim.keymap.set('n', lhs, function()
+        require('nvim-treesitter-textobjects.move')[mod](q, 'textobjects')
+      end, { buffer = buf, desc = desc, silent = true })
+    end
+
+    local function swmap(lhs, mod, q, desc)
+      vim.keymap.set('n', lhs, function()
+        require('nvim-treesitter-textobjects.swap')[mod](q)
+      end, { buffer = buf, desc = desc, silent = true })
+    end
+
+    -- You can use the capture groups defined in textobjects.scm
+    selmap('aa', '@parameter.outer', 'parameter outer')
+    selmap('ia', '@parameter.inner', 'parameter inner')
+    selmap('af', '@function.outer', 'function outer')
+    selmap('if', '@function.inner', 'function inner')
+    selmap('ac', '@class.outer', 'class outer')
+    selmap('ic', '@class.inner', 'class inner')
+
+    mvmap(']m', 'goto_next_start', '@function.outer', 'next function start')
+    mvmap(']]', 'goto_next_start', '@class.outer', 'next class start')
+    mvmap(']M', 'goto_next_end', '@function.outer', 'next function end')
+    mvmap('][', 'goto_next_end', '@class.outer', 'next class end')
+    mvmap('[m', 'goto_previous_start', '@function.outer', 'prev function start')
+    mvmap('[[', 'goto_previous_start', '@class.outer', 'prev class start')
+    mvmap('[M', 'goto_previous_end', '@function.outer', 'prev function end')
+    mvmap('[]', 'goto_previous_end', '@class.outer', 'prev class end')
+
+    swmap('<leader>a', 'swap_next', '@parameter.inner', 'swap next parameter')
+    swmap('<leader>A', 'swap_previous', '@parameter.inner', 'swap previous parameter')
+  end,
+})
 
 -- [[ Configure LSP ]]
 --  This function gets run when an LSP connects to a particular buffer.
-local on_attach = function(_, bufnr)
+local on_attach = function(client, bufnr)
   -- NOTE: Remember that lua is a real programming language, and as such it is possible
   -- to define small helper and utility functions so you don't have to repeat yourself
   -- many times.
   --
   -- In this case, we create a function that lets us more easily define mappings specific
   -- for LSP related items. It sets the mode, buffer and description for us each time.
-  local nmap = function(keys, func, desc)
+  local map = function(mode, keys, func, desc)
     if desc then
       desc = 'LSP: ' .. desc
     end
 
-    vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
+    vim.keymap.set(mode, keys, func, { buffer = bufnr, desc = desc })
+  end
+  local nmap = function(keys, func, desc)
+    map('n', keys, func, desc)
+  end
+  local xmap = function(keys, func, desc)
+    map('x', keys, func, desc)
   end
 
-  nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
-  nmap('<leader>ca', function()
+  local code_action = function()
     vim.lsp.buf.code_action { context = { only = { 'quickfix', 'refactor', 'source' } } }
-  end, '[C]ode [A]ction')
+  end
 
-  nmap('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
-  nmap('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
-  nmap('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
-  nmap('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
-  nmap('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
-  nmap('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
+  nmap('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+  nmap('gra', code_action, '[C]ode [A]ction')
+  xmap('gra', code_action, '[C]ode [A]ction')
+
+  nmap('grd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+  nmap('grr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+  nmap('gri', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
+  nmap('grt', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
+  nmap('gO', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
+  nmap('gW', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
 
   -- See `:help K` for why this keymap
   nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
   nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
+  nmap('grD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
 
   -- Lesser used LSP functionality
-  nmap('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
   nmap('<leader>wa', vim.lsp.buf.add_workspace_folder, '[W]orkspace [A]dd Folder')
   nmap('<leader>wr', vim.lsp.buf.remove_workspace_folder, '[W]orkspace [R]emove Folder')
   nmap('<leader>wl', function()
@@ -623,67 +600,117 @@ local on_attach = function(_, bufnr)
   vim.api.nvim_buf_create_user_command(bufnr, 'Format', function(_)
     vim.lsp.buf.format()
   end, { desc = 'Format current buffer with LSP' })
+
+  if client:supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight, bufnr) then
+    local group = vim.api.nvim_create_augroup('lsp-highlight', { clear = false })
+    vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
+      buffer = bufnr,
+      group = group,
+      callback = vim.lsp.buf.document_highlight,
+    })
+    vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+      buffer = bufnr,
+      group = group,
+      callback = vim.lsp.buf.clear_references,
+    })
+    vim.api.nvim_create_autocmd('LspDetach', {
+      buffer = bufnr,
+      group = group,
+      callback = function()
+        vim.api.nvim_clear_autocmds { group = 'lsp-highlight', buffer = bufnr }
+      end,
+    })
+  end
+
+  if client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint, bufnr) then
+    nmap('<leader>th', function()
+      vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = bufnr }, { bufnr = bufnr })
+    end, '[T]oggle Inlay [H]ints')
+  end
 end
-
--- document existing key chains
-
 
 -- mason-lspconfig requires that these setup functions are called in this order
 -- before setting up the servers.
 require('mason').setup()
-require('mason-lspconfig').setup()
-
--- Enable the following language servers
---  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
---
---  Add any additional override configuration in the following tables. They will be passed to
---  the `settings` field of the server config. You must look up that documentation yourself.
---
---  If you want to override the default filetypes that your language server will attach to you can
---  define the property 'filetypes' to the map in question.
-local servers = {
-  -- clangd = {},
-  -- gopls = {},
-  -- pyright = {},
-  -- rust_analyzer = {},
-  -- tsserver = {},
-  -- html = { filetypes = { 'html', 'twig', 'hbs'} },
-
-  lua_ls = {
-    Lua = {
-      workspace = { checkThirdParty = false },
-      telemetry = { enable = false },
-      -- NOTE: toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-      -- diagnostics = { disable = { 'missing-fields' } },
-    },
-  },
-}
 
 -- Setup neovim lua configuration
 require('neodev').setup()
 
 -- nvim-cmp supports additional completion capabilities, so broadcast that to servers
-local capabilities = vim.lsp.protocol.make_client_capabilities()
-capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
+local capabilities = require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities())
 
--- Ensure the servers above are installed
-local mason_lspconfig = require 'mason-lspconfig'
+-- Enable the following language servers
+--  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
+--
+--  Add any additional override configuration in the following tables. Per-server `settings`
+--  and other keys are passed straight to `vim.lsp.config`, so consult the language server's
+--  own documentation. The default filetypes and root markers come from nvim-lspconfig.
+local servers = {
+  clangd = {},
+  -- gopls = {},
+  -- pyright = {},
+  -- rust_analyzer = {},
+  -- NOTE: this is `ts_ls`, not `tsserver` -- nvim-lspconfig renamed it, and only
+  -- lspconfig server names are valid in `ensure_installed` (it maps to the
+  -- `typescript-language-server` mason package).
+  ts_ls = {
+    -- The upstream data config also lists `javascript.jsx` and `typescript.tsx`,
+    -- which no filetype detection ever produces; they make `:checkhealth vim.lsp`
+    -- warn. The real ones are `javascriptreact` / `typescriptreact`.
+    filetypes = { 'javascript', 'javascriptreact', 'typescript', 'typescriptreact' },
+  },
 
-mason_lspconfig.setup {
-  ensure_installed = vim.tbl_keys(servers),
+  lua_ls = {
+    settings = {
+      Lua = {
+        runtime = { version = 'LuaJIT' },
+        workspace = {
+          checkThirdParty = false,
+          -- Tell lua_ls about Neovim's own runtime so it resolves `vim.*` here.
+          library = { vim.env.VIMRUNTIME },
+        },
+        telemetry = { enable = false },
+        -- NOTE: toggle below to ignore Lua_LS's noisy `missing-fields` warnings
+        -- diagnostics = { disable = { 'missing-fields' } },
+      },
+    },
+  },
 }
 
-mason_lspconfig.setup({handlers = {
-  function(server_name)
-    require('lspconfig')[server_name].setup {
-      capabilities = capabilities,
-      on_attach = on_attach,
-      settings = servers[server_name],
-      filetypes = (servers[server_name] or {}).filetypes,
-    }
-  end,
-}
+-- NOTE: mason-lspconfig v2 dropped the `handlers` API, so servers are configured through
+-- Neovim's native `vim.lsp.config`. These MUST be registered before the `setup()` call
+-- below, which enables the servers -- config added afterwards never reaches a client that
+-- is already running.
+vim.lsp.config('*', {
+  capabilities = capabilities,
 })
+
+for server_name, server_config in pairs(servers) do
+  vim.lsp.config(server_name, server_config)
+end
+
+-- NOTE: `on_attach` is deliberately NOT set via `vim.lsp.config('*')`. Per `:help
+-- lsp-config-merge`, the '*' config has the *lowest* priority, so any server whose
+-- `lsp/<name>.lua` defines its own `on_attach` (clangd, pyright, eslint, texlab,
+-- ts_ls, ...) would silently drop ours. Driving it from `LspAttach` instead runs for
+-- every server and composes with a server's own `on_attach` instead of replacing it.
+vim.api.nvim_create_autocmd('LspAttach', {
+  group = vim.api.nvim_create_augroup('lsp-attach', { clear = true }),
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if client then
+      on_attach(client, args.buf)
+    end
+  end,
+})
+
+local server_names = vim.tbl_keys(servers)
+
+-- Ensure the servers above are installed and enabled
+require('mason-lspconfig').setup {
+  ensure_installed = server_names,
+  automatic_enable = server_names,
+}
 -- [[ Configure nvim-cmp ]]
 -- See `:help cmp`
 local cmp = require 'cmp'
