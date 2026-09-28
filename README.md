@@ -1,1 +1,1 @@
-My personal neovim configuration. This is a modified version of kickstart.nvim
+Personal NeoVim config. Started from kickstart.nvim as a base.
